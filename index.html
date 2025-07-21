@@ -2,41 +2,216 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Guess the Author!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Author</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: sans-serif;
-            text-align: center;
-            margin-top: 50px;
+            font-family: 'Inter', sans-serif;
         }
-        .message-box {
-            background-color: #f0f0f0;
-            padding: 20px;
-            border-radius: 10px;
-            display: inline-block;
-            margin-bottom: 20px;
+        .message-bubble {
+            background-color: #374151; /* gray-700 */
+            color: white;
+            padding: 1rem;
+            border-radius: 1rem;
+            max-width: 90%;
+            word-wrap: break-word;
         }
-        select, button {
-            padding: 10px;
-            font-size: 16px;
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn.correct {
+            background-color: #10B981 !important; /* emerald-500 */
+            color: white !important;
+        }
+        .btn.incorrect {
+            background-color: #EF4444 !important; /* red-500 */
+            color: white !important;
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
 
-    <h1>Guess Who Sent This Message!</h1>
+    <div id="game-container" class="w-full max-w-2xl mx-auto text-center bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl">
+        <h1 class="text-3xl sm:text-4xl font-bold mb-2">Guess the Author</h1>
+        <p class="text-gray-400 mb-6">Can you figure out who sent the message?</p>
 
-    <div class="message-box">
-        <h2 id="message">Loading...</h2>
+        <div id="message-display" class="mb-8 min-h-[120px] flex items-center justify-center">
+            <div id="message-bubble" class="message-bubble text-lg sm:text-xl">
+                Loading message...
+            </div>
+        </div>
+
+        <div id="author-options" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <!-- Author buttons will be inserted here -->
+        </div>
+
+        <div id="feedback" class="min-h-[2rem] text-xl font-semibold mb-4">&nbsp;</div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between">
+            <div id="score-display" class="text-lg bg-gray-700 px-4 py-2 rounded-lg mb-4 sm:mb-0">
+                Score: <span id="score" class="font-bold">0</span> / <span id="total" class="font-bold">0</span>
+            </div>
+            <button id="next-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto">
+                Next Message
+            </button>
+        </div>
     </div>
 
-    <form id="guess-form">
-        <select id="author-select" name="author"></select>
-        <button type="submit">Guess!</button>
-    </form>
+    <script>
+        // --- DOM Elements ---
+        const messageBubble = document.getElementById('message-bubble');
+        const authorOptionsContainer = document.getElementById('author-options');
+        const nextBtn = document.getElementById('next-btn');
+        const scoreEl = document.getElementById('score');
+        const totalEl = document.getElementById('total');
+        const feedbackEl = document.getElementById('feedback');
 
-    <p id="result"></p>
+        // --- Game State ---
+        let messages = [];
+        let authors = [];
+        let currentMessage = null;
+        let correctAnswer = '';
+        let score = 0;
+        let total = 0;
 
-    <script src="script.js"></script>
+        // --- Game Logic ---
+
+        /**
+         * Fetches and parses CSV data from the specified file.
+         */
+        async function loadData() {
+            try {
+                // The path to your uploaded file
+                const response = await fetch('cleaned_mightymerge.csv');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const csvText = await response.text();
+                parseCSV(csvText);
+                initializeGame();
+            } catch (error) {
+                console.error("Error loading or parsing CSV:", error);
+                messageBubble.textContent = "Failed to load messages. Please try again later.";
+            }
+        }
+
+        /**
+         * Parses the raw CSV text into a structured array of message objects.
+         * @param {string} text - The raw CSV string.
+         */
+        function parseCSV(text) {
+            const lines = text.split('\n').slice(1); // Skip header row
+            messages = lines.map(line => {
+                // Basic CSV parsing, handles commas inside quotes
+                const parts = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+                if (parts.length >= 4) {
+                    const author = (parts[1] || '').replace(/"/g, '');
+                    const content = (parts[3] || '').replace(/"/g, '');
+                    // Filter for messages with meaningful content
+                    if (author && content && content.trim().length > 5 && !content.startsWith('http')) {
+                         return { author, content };
+                    }
+                }
+                return null;
+            }).filter(Boolean); // Filter out null entries
+
+            // Get a unique list of authors
+            authors = [...new Set(messages.map(m => m.author))];
+        }
+
+        /**
+         * Initializes the game by setting up the first round.
+         */
+        function initializeGame() {
+            if (messages.length === 0 || authors.length < 4) {
+                 messageBubble.textContent = "Not enough data to start the game.";
+                 nextBtn.disabled = true;
+                 return;
+            }
+            displayNewMessage();
+        }
+
+        /**
+         * Displays a new random message and author choices.
+         */
+        function displayNewMessage() {
+            // Select a random message
+            currentMessage = messages[Math.floor(Math.random() * messages.length)];
+            correctAnswer = currentMessage.author;
+            messageBubble.textContent = currentMessage.content;
+
+            // Get 3 random incorrect authors
+            const incorrectAuthors = authors
+                .filter(author => author !== correctAnswer)
+                .sort(() => 0.5 - Math.random()) // Shuffle
+                .slice(0, 3);
+
+            // Combine and shuffle options
+            const options = [correctAnswer, ...incorrectAuthors].sort(() => 0.5 - Math.random());
+
+            // Display options as buttons
+            authorOptionsContainer.innerHTML = '';
+            options.forEach(author => {
+                const button = document.createElement('button');
+                button.textContent = author;
+                button.className = 'btn bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg';
+                button.onclick = () => handleGuess(author, button);
+                authorOptionsContainer.appendChild(button);
+            });
+
+            // Reset UI for the new round
+            feedbackEl.innerHTML = '&nbsp;';
+            nextBtn.disabled = true;
+        }
+
+        /**
+         * Handles the user's guess, provides feedback, and updates the score.
+         * @param {string} selectedAuthor - The author the user guessed.
+         * @param {HTMLButtonElement} clickedButton - The button element that was clicked.
+         */
+        function handleGuess(selectedAuthor, clickedButton) {
+            total++;
+            let isCorrect = selectedAuthor === correctAnswer;
+
+            if (isCorrect) {
+                score++;
+                feedbackEl.textContent = "Correct!";
+                feedbackEl.style.color = '#10B981'; // emerald-500
+            } else {
+                feedbackEl.textContent = `Wrong! It was ${correctAnswer}`;
+                feedbackEl.style.color = '#EF4444'; // red-500
+            }
+
+            // Visually update buttons
+            Array.from(authorOptionsContainer.children).forEach(button => {
+                button.disabled = true; // Disable all buttons
+                if (button.textContent === correctAnswer) {
+                    button.classList.add('correct');
+                } else if (button === clickedButton) {
+                    button.classList.add('incorrect');
+                }
+                 button.style.opacity = '0.7';
+            });
+            clickedButton.style.opacity = '1';
+
+
+            // Update score display
+            scoreEl.textContent = score;
+            totalEl.textContent = total;
+            nextBtn.disabled = false;
+        }
+
+        // --- Event Listeners ---
+        nextBtn.addEventListener('click', displayNewMessage);
+
+        // --- Initial Load ---
+        window.onload = loadData;
+    </script>
 </body>
 </html>
