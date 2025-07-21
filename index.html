@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Guess the Author!</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .message-box {
+            background-color: #f0f0f0;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        select, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Guess Who Sent This Message!</h1>
+
+    <div class="message-box">
+        <h2 id="message">Loading...</h2>
+    </div>
+
+    <form id="guess-form">
+        <select id="author-select" name="author"></select>
+        <button type="submit">Guess!</button>
+    </form>
+
+    <p id="result"></p>
+
+    <script src="script.js"></script>
+</body>
+</html>
