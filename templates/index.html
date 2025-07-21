@@ -27,17 +27,16 @@
     <h1>Guess Who Sent This Message!</h1>
 
     <div class="message-box">
-        <h2>"{{ message }}"</h2>
+        <h2 id="message">Loading...</h2>
     </div>
 
-    <form action="/guess" method="post">
-        <select name="author">
-            {% for author in authors %}
-                <option value="{{ author }}">{{ author }}</option>
-            {% endfor %}
-        </select>
+    <form id="guess-form">
+        <select id="author-select" name="author"></select>
         <button type="submit">Guess!</button>
     </form>
 
+    <p id="result"></p>
+
+    <script src="script.js"></script>
 </body>
 </html>
